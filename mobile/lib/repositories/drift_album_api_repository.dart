@@ -78,6 +78,7 @@ class DriftAlbumApiRepository extends ApiRepository {
     String? description,
     String? thumbnailAssetId,
     bool? isActivityEnabled,
+    bool? isPrivate,
     AlbumAssetOrder? order,
   }) async {
     AssetOrder? apiOrder;
@@ -97,6 +98,7 @@ class DriftAlbumApiRepository extends ApiRepository {
               ? const Optional.absent()
               : Optional.present(thumbnailAssetId),
           isActivityEnabled: isActivityEnabled == null ? const Optional.absent() : Optional.present(isActivityEnabled),
+          isPrivate: isPrivate == null ? const Optional.absent() : Optional.present(isPrivate),
           order: apiOrder == null ? const Optional.absent() : Optional.present(apiOrder),
         ),
       ),
@@ -124,6 +126,13 @@ class DriftAlbumApiRepository extends ApiRepository {
     );
     return response.isActivityEnabled;
   }
+
+  Future<bool> setPrivate(String albumId, bool isPrivate) async {
+    final response = await checkNull(
+      _api.updateAlbumInfo(albumId, UpdateAlbumDto(isPrivate: Optional.present(isPrivate))),
+    );
+    return response.isPrivate;
+  }
 }
 
 extension on AlbumResponseDto {
@@ -138,6 +147,7 @@ extension on AlbumResponseDto {
       updatedAt: updatedAt,
       thumbnailAssetId: albumThumbnailAssetId,
       isActivityEnabled: isActivityEnabled,
+      isPrivate: isPrivate,
       order: order.orElse(null) == AssetOrder.asc ? AlbumAssetOrder.asc : AlbumAssetOrder.desc,
       assetCount: assetCount,
       isShared: albumUsers.length > 2,

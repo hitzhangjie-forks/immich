@@ -138,6 +138,7 @@ class RemoteAlbumService {
     String? description,
     String? thumbnailAssetId,
     bool? isActivityEnabled,
+    bool? isPrivate,
     AlbumAssetOrder? order,
   }) async {
     final owner = await _repository.getOwner(albumId);
@@ -148,6 +149,7 @@ class RemoteAlbumService {
       description: description,
       thumbnailAssetId: thumbnailAssetId,
       isActivityEnabled: isActivityEnabled,
+      isPrivate: isPrivate,
       order: order,
     );
 
@@ -306,6 +308,12 @@ class RemoteAlbumService {
     await _albumApiRepository.setActivityStatus(albumId, enabled);
 
     return _repository.setActivityStatus(albumId, enabled);
+  }
+
+  Future<void> setPrivate(String albumId, bool isPrivate) async {
+    await _albumApiRepository.setPrivate(albumId, isPrivate);
+
+    return _repository.setPrivate(albumId, isPrivate);
   }
 
   Future<int> getCount() {

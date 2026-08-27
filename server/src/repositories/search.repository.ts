@@ -11,6 +11,7 @@ import { DB } from 'src/schema';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table';
 import {
   anyUuid,
+  notInPrivateAlbum,
   searchAssetBuilder,
   searchAssetBuilderLegacy,
   searchMetadataV3Examples,
@@ -429,6 +430,7 @@ export class SearchRepository {
           .where('asset.visibility', '=', AssetVisibility.Timeline)
           .where('asset.type', '=', AssetType.Image)
           .where('asset.deletedAt', 'is', null)
+          .where(notInPrivateAlbum)
           .orderBy('city')
           .limit(1);
 
@@ -445,6 +447,7 @@ export class SearchRepository {
                 .where('asset.visibility', '=', AssetVisibility.Timeline)
                 .where('asset.type', '=', AssetType.Image)
                 .where('asset.deletedAt', 'is', null)
+                .where(notInPrivateAlbum)
                 .whereRef('asset_exif.city', '>', 'cte.city')
                 .orderBy('city')
                 .limit(1)
@@ -557,6 +560,7 @@ export class SearchRepository {
       .where('ownerId', '=', anyUuid(userIds))
       .where('visibility', '=', AssetVisibility.Timeline)
       .where('deletedAt', 'is', null)
+      .where(notInPrivateAlbum)
       .where(field, 'is not', null)
       .where(field, '!=', '');
   }

@@ -44,6 +44,17 @@ select
           and "asset"."deletedAt" is null
           and not exists (
             select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
+          and not exists (
+            select
               $1 as "one"
             from
               "asset_face"
@@ -83,6 +94,17 @@ select
           "memory_asset"."memoriesId" = "memory"."id"
           and "asset"."visibility" = 'timeline'
           and "asset"."deletedAt" is null
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
           and not exists (
             select
               $1 as "one"
@@ -134,6 +156,17 @@ select
           and "asset"."deletedAt" is null
           and not exists (
             select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
+          and not exists (
+            select
               $1 as "one"
             from
               "asset_face"
@@ -174,6 +207,17 @@ select
           "memory_asset"."memoriesId" = "memory"."id"
           and "asset"."visibility" = 'timeline'
           and "asset"."deletedAt" is null
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
           and not exists (
             select
               $1 as "one"
@@ -220,6 +264,17 @@ select
           "memory_asset"."memoriesId" = "memory"."id"
           and "asset"."visibility" = 'timeline'
           and "asset"."deletedAt" is null
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
         order by
           "asset"."fileCreatedAt" asc
       ) as agg
@@ -237,31 +292,6 @@ set
   "isSaved" = $2
 where
   "id" = $3
-select
-  "memory".*,
-  (
-    select
-      coalesce(json_agg(agg), '[]')
-    from
-      (
-        select
-          "asset".*
-        from
-          "asset"
-          inner join "memory_asset" on "asset"."id" = "memory_asset"."assetId"
-        where
-          "memory_asset"."memoriesId" = "memory"."id"
-          and "asset"."visibility" = 'timeline'
-          and "asset"."deletedAt" is null
-        order by
-          "asset"."fileCreatedAt" asc
-      ) as agg
-  ) as "assets"
-from
-  "memory"
-where
-  "id" = $1
-  and "deletedAt" is null
 
 -- MemoryRepository.delete
 delete from "memory"

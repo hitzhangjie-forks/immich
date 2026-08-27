@@ -30,6 +30,7 @@ describe(SyncRequestType.AlbumsV1, () => {
         data: expect.objectContaining({
           id: album.id,
           name: album.albumName,
+          isPrivate: false,
         }),
         type: SyncEntityType.AlbumV1,
       },

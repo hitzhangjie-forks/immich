@@ -4,6 +4,7 @@ import {
   DeleteDateColumn,
   ForeignKeyColumn,
   Generated,
+  Index,
   PrimaryGeneratedColumn,
   Table,
   Timestamp,
@@ -15,6 +16,11 @@ import { AssetTable } from 'src/schema/tables/asset.table';
 
 @Table({ name: 'album' })
 @UpdatedAtTrigger('album_updatedAt')
+@Index({
+  name: 'album_isPrivate_idx',
+  columns: ['isPrivate'],
+  where: '"isPrivate" = true AND "deletedAt" IS NULL',
+})
 export class AlbumTable {
   @PrimaryGeneratedColumn()
   id!: Generated<string>;
@@ -44,6 +50,9 @@ export class AlbumTable {
 
   @Column({ type: 'boolean', default: true })
   isActivityEnabled!: Generated<boolean>;
+
+  @Column({ type: 'boolean', default: false })
+  isPrivate!: Generated<boolean>;
 
   @Column({ default: AssetOrder.Desc })
   order!: Generated<AssetOrder>;

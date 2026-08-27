@@ -31,6 +31,7 @@ class DriftAlbumOptionsPage extends HookConsumerWidget {
     final sharedUsersAsync = ref.watch(remoteAlbumSharedUsersProvider(album.id));
     final userId = ref.watch(authProvider).userId;
     final activityEnabled = useState(album.isActivityEnabled);
+    final isPrivate = useState(album.isPrivate);
     final isOwner = album.ownerId == userId;
     final owner = isOwner ? ref.watch(currentUserProvider) : null;
     final allUsers = isOwner ? null : ref.watch(driftUsersProvider);
@@ -231,6 +232,24 @@ class DriftAlbumOptionsPage extends HookConsumerWidget {
                 ),
                 subtitle: Text(
                   context.t.let_others_respond,
+                  style: context.textTheme.labelLarge?.copyWith(color: context.colorScheme.onSurfaceSecondary),
+                ),
+              ),
+            if (isOwner)
+              SwitchListTile.adaptive(
+                value: isPrivate.value,
+                onChanged: (bool value) async {
+                  isPrivate.value = value;
+                  await ref.read(remoteAlbumProvider.notifier).setPrivate(album.id, value);
+                },
+                activeThumbColor: isPrivate.value ? context.primaryColor : context.themeData.disabledColor,
+                dense: true,
+                title: Text(
+                  context.t.private_album,
+                  style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  context.t.private_album_description,
                   style: context.textTheme.labelLarge?.copyWith(color: context.colorScheme.onSurfaceSecondary),
                 ),
               ),

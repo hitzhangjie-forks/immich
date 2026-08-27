@@ -68,6 +68,17 @@ from
   and "asset"."ownerId" = "person"."ownerId"
   and "asset"."visibility" = 'timeline'
   and "asset"."deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
 where
   "person"."ownerId" = $1
   and "asset_face"."deletedAt" is null
@@ -296,6 +307,17 @@ from
   left join "asset" on "asset"."id" = "asset_face"."assetId"
   and "asset"."visibility" = 'timeline'
   and "asset"."deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and (
     "asset"."ownerId" = $1::uuid
     or exists (
@@ -345,6 +367,17 @@ where
           "asset"."id" = "asset_face"."assetId"
           and "asset"."visibility" = 'timeline'
           and "asset"."deletedAt" is null
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
       )
   )
   and "person"."ownerId" = $3

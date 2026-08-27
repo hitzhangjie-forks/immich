@@ -169,6 +169,7 @@ class RemoteAlbumRepository extends DatabaseAccessor<Drift> with $RemoteAlbumRep
         description: Value(album.description),
         thumbnailAssetId: Value(album.thumbnailAssetId ?? (assetIds.isNotEmpty ? assetIds.first : null)),
         isActivityEnabled: Value(album.isActivityEnabled),
+        isPrivate: Value(album.isPrivate),
         order: Value(album.order),
       );
 
@@ -204,6 +205,7 @@ class RemoteAlbumRepository extends DatabaseAccessor<Drift> with $RemoteAlbumRep
         description: Value(album.description),
         thumbnailAssetId: Value(album.thumbnailAssetId),
         isActivityEnabled: Value(album.isActivityEnabled),
+        isPrivate: Value(album.isPrivate),
         order: Value(album.order),
       ),
     );
@@ -363,6 +365,12 @@ class RemoteAlbumRepository extends DatabaseAccessor<Drift> with $RemoteAlbumRep
     final query = _db.update(_db.remoteAlbumEntity)..where((row) => row.id.equals(albumId));
 
     await query.write(RemoteAlbumEntityCompanion(isActivityEnabled: Value(isEnabled)));
+  }
+
+  Future<void> setPrivate(String albumId, bool isPrivate) async {
+    final query = _db.update(_db.remoteAlbumEntity)..where((row) => row.id.equals(albumId));
+
+    await query.write(RemoteAlbumEntityCompanion(isPrivate: Value(isPrivate)));
   }
 
   Stream<RemoteAlbum?> watchAlbum(String albumId) {
@@ -581,6 +589,7 @@ extension on RemoteAlbumEntityData {
       description: description,
       thumbnailAssetId: thumbnailAssetId,
       isActivityEnabled: isActivityEnabled,
+      isPrivate: isPrivate,
       order: order,
       assetCount: assetCount,
       ownerName: ownerName,

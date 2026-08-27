@@ -876,6 +876,8 @@ export type AlbumResponseDto = {
     id: string;
     /** Activity feed enabled */
     isActivityEnabled: boolean;
+    /** Album assets are hidden from the library */
+    isPrivate: boolean;
     /** Last modified asset timestamp */
     lastModifiedAssetTimestamp?: string;
     order?: AssetOrder;
@@ -929,6 +931,8 @@ export type UpdateAlbumDto = {
     description?: string | null;
     /** Enable activity feed */
     isActivityEnabled?: boolean;
+    /** Hide album assets from Photos, Explore, Map, Search, People, and Memories */
+    isPrivate?: boolean;
     order?: AssetOrder;
 };
 export type BulkIdsDto = {
@@ -3110,6 +3114,8 @@ export type SyncAlbumV1 = {
     id: string;
     /** Is activity enabled */
     isActivityEnabled: boolean;
+    /** Is private album */
+    isPrivate: boolean;
     /** Album name */
     name: string;
     order: AssetOrder;
@@ -3129,6 +3135,8 @@ export type SyncAlbumV2 = {
     id: string;
     /** Is activity enabled */
     isActivityEnabled: boolean;
+    /** Is private album */
+    isPrivate: boolean;
     /** Album name */
     name: string;
     order: AssetOrder;

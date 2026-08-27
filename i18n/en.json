@@ -1697,6 +1697,8 @@
   "previous_or_next_year": "Year forward/back",
   "primary": "Primary",
   "privacy": "Privacy",
+  "private_album": "Private album",
+  "private_album_description": "Only visible when you open this album. Hidden from Photos, Explore, Map, Search, People, and Memories.",
   "profile": "Profile",
   "profile_drawer_app_logs": "Logs",
   "profile_drawer_github": "GitHub",

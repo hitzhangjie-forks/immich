@@ -137,6 +137,17 @@ with
           (asset."localDateTime" at time zone 'UTC')::date = today.date
           and "asset"."ownerId" = any ($4::uuid[])
           and "asset"."visibility" = $5
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
           and exists (
             select
             from
@@ -351,6 +362,17 @@ where
   and "createdAt" >= $2
   and "createdAt" < $3
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
 group by
   date_trunc('DAY', "asset"."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
 order by
@@ -366,6 +388,17 @@ with
     where
       "asset"."deletedAt" is null
       and "asset"."visibility" in ('archive', 'timeline')
+      and not exists (
+        select
+          1 as "exists"
+        from
+          "album_asset"
+          inner join "album" on "album"."id" = "album_asset"."albumId"
+          and "album"."isPrivate" = true
+          and "album"."deletedAt" is null
+        where
+          "album_asset"."assetId" = "asset"."id"
+      )
   )
 select
   ("timeBucket" AT TIME ZONE 'UTC')::date::text as "timeBucket",
@@ -434,6 +467,17 @@ with
     where
       "asset"."deletedAt" is null
       and "asset"."visibility" in ('archive', 'timeline')
+      and not exists (
+        select
+          1 as "exists"
+        from
+          "album_asset"
+          inner join "album" on "album"."id" = "album_asset"."albumId"
+          and "album"."isPrivate" = true
+          and "album"."deletedAt" is null
+        where
+          "album_asset"."assetId" = "asset"."id"
+      )
       and date_trunc('MONTH', "localDateTime" AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' = $3
       and not exists (
         select
@@ -501,6 +545,17 @@ where
   and "visibility" = $3
   and "type" = $4
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
 limit
   $5
 
@@ -515,6 +570,17 @@ where
   and "asset"."visibility" = $2
   and "type" = $3
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
 order by
   "value" desc
 limit

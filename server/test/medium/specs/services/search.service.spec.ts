@@ -105,6 +105,21 @@ describe(SearchService.name, () => {
 
       expect(result).toEqual({ total: 0 });
     });
+
+    it('should exclude assets in a private album', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const { asset: visible } = await ctx.newAsset({ ownerId: user.id });
+      const { asset: hidden } = await ctx.newAsset({ ownerId: user.id });
+      await ctx.newAlbum({ ownerId: user.id, isPrivate: true }, [hidden.id]);
+
+      const auth = factory.auth({ user: { id: user.id } });
+
+      const result = await sut.searchStatistics(auth, { visibility: AssetVisibility.Timeline });
+
+      expect(result).toEqual({ total: 1 });
+      expect(visible.id).toBeDefined();
+    });
   });
 
   describe('withStacked option', () => {

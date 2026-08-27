@@ -19010,6 +19010,10 @@
             "description": "Activity feed enabled",
             "type": "boolean"
           },
+          "isPrivate": {
+            "description": "Album assets are hidden from the library",
+            "type": "boolean"
+          },
           "lastModifiedAssetTimestamp": {
             "description": "Last modified asset timestamp",
             "format": "date-time",
@@ -19043,6 +19047,7 @@
           "hasSharedLink",
           "id",
           "isActivityEnabled",
+          "isPrivate",
           "shared",
           "updatedAt"
         ],
@@ -26445,6 +26450,10 @@
             "description": "Is activity enabled",
             "type": "boolean"
           },
+          "isPrivate": {
+            "description": "Is private album",
+            "type": "boolean"
+          },
           "name": {
             "description": "Album name",
             "type": "string"
@@ -26476,6 +26485,7 @@
           "description",
           "id",
           "isActivityEnabled",
+          "isPrivate",
           "name",
           "order",
           "ownerId",
@@ -26507,6 +26517,10 @@
             "description": "Is activity enabled",
             "type": "boolean"
           },
+          "isPrivate": {
+            "description": "Is private album",
+            "type": "boolean"
+          },
           "name": {
             "description": "Album name",
             "type": "string"
@@ -26532,6 +26546,7 @@
           "description",
           "id",
           "isActivityEnabled",
+          "isPrivate",
           "name",
           "order",
           "thumbnailAssetId",
@@ -28623,6 +28638,10 @@
           },
           "isActivityEnabled": {
             "description": "Enable activity feed",
+            "type": "boolean"
+          },
+          "isPrivate": {
+            "description": "Hide album assets from Photos, Explore, Map, Search, People, and Memories",
             "type": "boolean"
           },
           "order": {

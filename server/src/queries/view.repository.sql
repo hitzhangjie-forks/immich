@@ -12,6 +12,17 @@ where
   and "fileCreatedAt" is not null
   and "fileModifiedAt" is not null
   and "localDateTime" is not null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
 order by
   "directoryPath" asc
 
@@ -29,6 +40,17 @@ where
   and "fileCreatedAt" is not null
   and "fileModifiedAt" is not null
   and "localDateTime" is not null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "originalPath" like $3
   and "originalPath" not like $4
 order by

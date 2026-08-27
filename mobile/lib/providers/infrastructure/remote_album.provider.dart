@@ -145,6 +145,7 @@ class RemoteAlbumNotifier extends Notifier<RemoteAlbumState> {
     String? description,
     String? thumbnailAssetId,
     bool? isActivityEnabled,
+    bool? isPrivate,
     AlbumAssetOrder? order,
   }) async {
     try {
@@ -154,6 +155,7 @@ class RemoteAlbumNotifier extends Notifier<RemoteAlbumState> {
         description: description,
         thumbnailAssetId: thumbnailAssetId,
         isActivityEnabled: isActivityEnabled,
+        isPrivate: isPrivate,
         order: order,
       );
 
@@ -299,6 +301,10 @@ class RemoteAlbumNotifier extends Notifier<RemoteAlbumState> {
 
   Future<void> setActivityStatus(String albumId, bool enabled) {
     return _remoteAlbumService.setActivityStatus(albumId, enabled);
+  }
+
+  Future<void> setPrivate(String albumId, bool isPrivate) {
+    return _remoteAlbumService.setPrivate(albumId, isPrivate);
   }
 }
 

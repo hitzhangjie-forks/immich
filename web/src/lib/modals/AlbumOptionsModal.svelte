@@ -97,6 +97,12 @@
               onCheckedChange={(checked) => handleUpdateAlbum(album, { isActivityEnabled: checked })}
             />
           </Field>
+          <Field label={$t('private_album')} description={$t('private_album_description')} disabled={readOnly}>
+            <Switch
+              checked={album.isPrivate}
+              onCheckedChange={(checked) => handleUpdateAlbum(album, { isPrivate: checked })}
+            />
+          </Field>
         </div>
       </div>
 

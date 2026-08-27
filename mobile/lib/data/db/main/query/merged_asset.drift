@@ -1,5 +1,7 @@
 import '../table/remote/asset.dart';
 import '../table/remote/stack.dart';
+import '../table/remote/album.dart';
+import '../table/remote/album_asset.dart';
 import '../table/local/asset.dart';
 import '../table/local/album.dart';
 import '../table/local/album_asset.dart';
@@ -40,6 +42,11 @@ WHERE
 	AND (
 		rae.stack_id IS NULL
 		OR rae.id = se.primary_asset_id
+	)
+	AND NOT EXISTS (
+		SELECT 1 FROM remote_album_asset_entity raae
+		INNER JOIN remote_album_entity ra ON raae.album_id = ra.id
+		WHERE raae.asset_id = rae.id AND ra.is_private = 1
 	)
 
 UNION ALL
@@ -114,6 +121,11 @@ FROM
 		AND (
 			rae.stack_id IS NULL
 			OR rae.id = se.primary_asset_id
+		)
+		AND NOT EXISTS (
+			SELECT 1 FROM remote_album_asset_entity raae
+			INNER JOIN remote_album_entity ra ON raae.album_id = ra.id
+			WHERE raae.asset_id = rae.id AND ra.is_private = 1
 		)
 	UNION ALL
 	SELECT

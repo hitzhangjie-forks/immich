@@ -54,6 +54,17 @@ select
           "asset"."deletedAt" is null
           and "asset"."stackId" = "stack"."id"
           and "asset"."visibility" in ('archive', 'timeline')
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
         order by
           "asset"."fileCreatedAt" asc
       ) as agg
@@ -141,6 +152,17 @@ select
           "asset"."deletedAt" is null
           and "asset"."stackId" = "stack"."id"
           and "asset"."visibility" in ('archive', 'timeline')
+          and not exists (
+            select
+              1 as "exists"
+            from
+              "album_asset"
+              inner join "album" on "album"."id" = "album_asset"."albumId"
+              and "album"."isPrivate" = true
+              and "album"."deletedAt" is null
+            where
+              "album_asset"."assetId" = "asset"."id"
+          )
         order by
           "asset"."fileCreatedAt" asc
       ) as agg

@@ -424,6 +424,18 @@ describe(AlbumService.name, () => {
         owner.id,
       );
     });
+
+    it('should allow the owner to mark the album as private', async () => {
+      const album = AlbumFactory.create();
+      const { user: owner } = album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner)!;
+      mocks.access.album.checkOwnerAccess.mockResolvedValue(new Set([album.id]));
+      mocks.album.getById.mockResolvedValue(getForAlbum(album));
+      mocks.album.update.mockResolvedValue(getForAlbum({ ...album, isPrivate: true }));
+
+      await sut.update(AuthFactory.create(owner), album.id, { isPrivate: true });
+
+      expect(mocks.album.update).toHaveBeenCalledWith(album.id, { id: album.id, isPrivate: true }, owner.id);
+    });
   });
 
   describe('delete', () => {

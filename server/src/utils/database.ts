@@ -106,6 +106,26 @@ export function withDefaultVisibility<O>(qb: SelectQueryBuilder<DB, 'asset', O>)
   return qb.where('asset.visibility', 'in', [sql.lit(AssetVisibility.Archive), sql.lit(AssetVisibility.Timeline)]);
 }
 
+export const notInPrivateAlbum = (eb: ExpressionBuilder<DB, 'asset'>) =>
+  eb.not(
+    eb.exists(
+      eb
+        .selectFrom('album_asset')
+        .select(sql.lit(1).as('exists'))
+        .innerJoin('album', (join) =>
+          join
+            .onRef('album.id', '=', 'album_asset.albumId')
+            .on('album.isPrivate', '=', sql.lit(true))
+            .on('album.deletedAt', 'is', null),
+        )
+        .whereRef('album_asset.assetId', '=', 'asset.id'),
+    ),
+  );
+
+export function excludeAssetsInPrivateAlbums<O>(qb: SelectQueryBuilder<DB, 'asset', O>) {
+  return qb.where(notInPrivateAlbum);
+}
+
 const selectExifInfo = (eb: AssetExpressionBuilder) =>
   eb.fn
     .toJson(eb.table('asset_exif'))
@@ -429,6 +449,7 @@ export function searchAssetBuilderLegacy(kysely: Kysely<DB>, options: AssetSearc
         ? qb.where('asset.visibility', '!=', AssetVisibility.Locked)
         : qb.where('asset.visibility', '=', options.visibility!),
     )
+    .$if(!options.albumIds || options.albumIds.length === 0, excludeAssetsInPrivateAlbums)
     .$if(!!options.albumIds && options.albumIds.length > 0, (qb) => inAlbums(qb, options.albumIds!))
     .$if(!!options.tagIds && options.tagIds.length > 0, (qb) => hasTags(qb, options.tagIds!))
     .$if(options.tagIds === null, (qb) =>
@@ -789,6 +810,7 @@ function branchPredicates(eb: AssetExpressionBuilder, branch: SearchFilterBranch
 // can compose the same filters without stripping an order by
 export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuilderV3Options) {
   const filter = options.filter ?? {};
+  const albumScoped = !!(filter.albumIds?.any?.length || filter.albumIds?.all?.length);
 
   return (
     kysely
@@ -797,6 +819,7 @@ export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuild
       // postgres eliminates the left join when no exif column is referenced, so unused joins are free
       .leftJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
       .$if(!!options.withExif, (qb) => qb.select(selectExifInfo))
+      .$if(!albumScoped, (qb) => qb.where(notInPrivateAlbum))
       .$if(!!options.userIds && options.userIds.length > 0, (qb) =>
         qb.where('asset.ownerId', '=', anyUuid(options.userIds!)),
       )

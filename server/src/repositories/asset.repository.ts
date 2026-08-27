@@ -36,6 +36,7 @@ import { AssetTable } from 'src/schema/tables/asset.table';
 import {
   anyUuid,
   asUuid,
+  excludeAssetsInPrivateAlbums,
   hasPeople,
   inSharedAlbum,
   removeUndefinedKeys,
@@ -484,6 +485,7 @@ export class AssetRepository {
                 .where(sql`(asset."localDateTime" at time zone 'UTC')::date`, '=', sql`today.date`)
                 .where('asset.ownerId', '=', anyUuid(ownerIds))
                 .where('asset.visibility', '=', AssetVisibility.Timeline)
+                .$call(excludeAssetsInPrivateAlbums)
                 .where((eb) =>
                   eb.exists((qb) =>
                     qb
@@ -719,6 +721,7 @@ export class AssetRepository {
       .$if(!!visibility, (qb) => qb.where('asset.visibility', '=', visibility!))
       .$if(isFavorite !== undefined, (qb) => qb.where('isFavorite', '=', isFavorite!))
       .$if(!!isTrashed, (qb) => qb.where('asset.status', '!=', AssetStatus.Deleted))
+      .$if(!isTrashed, excludeAssetsInPrivateAlbums)
       .where('deletedAt', isTrashed ? 'is not' : 'is', null)
       .executeTakeFirstOrThrow();
   }
@@ -744,6 +747,7 @@ export class AssetRepository {
       .where(column, '>=', dto.from)
       .where(column, '<', dto.to)
       .where('deletedAt', 'is', null)
+      .$call(excludeAssetsInPrivateAlbums)
       .groupBy(date)
       .orderBy('date', 'asc')
       .execute();
@@ -774,6 +778,7 @@ export class AssetRepository {
           })
           .$if(options.visibility === undefined, withDefaultVisibility)
           .$if(!!options.visibility, (qb) => qb.where('asset.visibility', '=', options.visibility!))
+          .$if(!options.albumId, excludeAssetsInPrivateAlbums)
           .$if(!!options.albumId, (qb) =>
             qb
               .innerJoin('album_asset', 'asset.id', 'album_asset.assetId')
@@ -855,6 +860,7 @@ export class AssetRepository {
           .where('asset.deletedAt', options.isTrashed ? 'is not' : 'is', null)
           .$if(options.visibility === undefined, withDefaultVisibility)
           .$if(!!options.visibility, (qb) => qb.where('asset.visibility', '=', options.visibility!))
+          .$if(!options.albumId, excludeAssetsInPrivateAlbums)
           .$if(!!options.bbox, (qb) => {
             const bbox = options.bbox!;
             const circle = getBoundingCircle(bbox);
@@ -990,6 +996,7 @@ export class AssetRepository {
       .where('visibility', '=', AssetVisibility.Timeline)
       .where('type', '=', AssetType.Image)
       .where('deletedAt', 'is', null)
+      .$call(excludeAssetsInPrivateAlbums)
       .limit(maxFields)
       .execute();
 
@@ -1005,6 +1012,7 @@ export class AssetRepository {
       .where('asset.visibility', '=', AssetVisibility.Timeline)
       .where('type', '=', AssetType.Image)
       .where('deletedAt', 'is', null)
+      .$call(excludeAssetsInPrivateAlbums)
       .orderBy('value', 'desc')
       .limit(maxAssets)
       .execute();

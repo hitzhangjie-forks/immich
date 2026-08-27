@@ -4,7 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { ChunkedSet, DummyValue, GenerateSql } from 'src/decorators';
 import { AlbumUserRole, AssetVisibility } from 'src/enum';
 import { DB } from 'src/schema';
-import { asUuid } from 'src/utils/database';
+import { asUuid, notInPrivateAlbum } from 'src/utils/database';
 
 class ActivityAccess {
   constructor(private db: Kysely<DB>) {}
@@ -220,7 +220,7 @@ class AssetAccess {
           eb('asset.visibility', '=', sql.lit(AssetVisibility.Hidden)),
         ]),
       )
-
+      .where(notInPrivateAlbum)
       .where('asset.id', 'in', [...assetIds])
       .execute()
       .then((assets) => new Set(assets.map((asset) => asset.id)));

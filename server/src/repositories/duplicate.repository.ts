@@ -9,7 +9,7 @@ import { AssetType, VectorIndex } from 'src/enum';
 import { probes } from 'src/repositories/database.repository';
 import { DB } from 'src/schema';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table';
-import { anyUuid, asUuid, withDefaultVisibility } from 'src/utils/database';
+import { anyUuid, asUuid, excludeAssetsInPrivateAlbums, withDefaultVisibility } from 'src/utils/database';
 
 // Maximum number of candidate duplicates to return from vector search
 const DUPLICATE_SEARCH_LIMIT = 64;
@@ -40,6 +40,7 @@ export class DuplicateRepository {
           qb
             .selectFrom('asset')
             .$call(withDefaultVisibility)
+            .$call(excludeAssetsInPrivateAlbums)
             // Use innerJoinLateral to build a composite object per asset that includes
             // exifInfo and tags. This "asset2" object is then aggregated via jsonAgg.
             // Tags must be included here (not via separate joins) so they appear in the
@@ -116,6 +117,7 @@ export class DuplicateRepository {
     const result = await this.db
       .selectFrom('asset')
       .$call(withDefaultVisibility)
+      .$call(excludeAssetsInPrivateAlbums)
       // Use innerJoinLateral to build a composite object per asset that includes
       // exifInfo and tags. This "asset2" object is then aggregated via jsonAgg.
       // Tags must be included here (not via separate joins) so they appear in the
@@ -198,6 +200,7 @@ export class DuplicateRepository {
           qb
             .selectFrom('asset')
             .$call(withDefaultVisibility)
+            .$call(excludeAssetsInPrivateAlbums)
             .select([
               'asset.id as assetId',
               'asset.duplicateId',

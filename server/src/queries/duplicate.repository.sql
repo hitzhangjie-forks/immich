@@ -42,6 +42,17 @@ with
       ) as "asset2" on true
     where
       "asset"."visibility" in ('archive', 'timeline')
+      and not exists (
+        select
+          1 as "exists"
+        from
+          "album_asset"
+          inner join "album" on "album"."id" = "album_asset"."albumId"
+          and "album"."isPrivate" = true
+          and "album"."deletedAt" is null
+        where
+          "album_asset"."assetId" = "asset"."id"
+      )
       and "asset"."ownerId" = $1::uuid
       and "asset"."duplicateId" is not null
       and "asset"."deletedAt" is null
@@ -121,6 +132,17 @@ from
   ) as "asset2" on true
 where
   "asset"."visibility" in ('archive', 'timeline')
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "asset"."duplicateId" = $1::uuid
   and "asset"."deletedAt" is null
   and "asset"."stackId" is null
@@ -158,6 +180,17 @@ with
       inner join "smart_search" on "asset"."id" = "smart_search"."assetId"
     where
       "asset"."visibility" in ('archive', 'timeline')
+      and not exists (
+        select
+          1 as "exists"
+        from
+          "album_asset"
+          inner join "album" on "album"."id" = "album_asset"."albumId"
+          and "album"."isPrivate" = true
+          and "album"."deletedAt" is null
+        where
+          "album_asset"."assetId" = "asset"."id"
+      )
       and "asset"."ownerId" = any ($2::uuid[])
       and "asset"."deletedAt" is null
       and "asset"."type" = $3

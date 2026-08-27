@@ -501,6 +501,7 @@ describe('/albums', () => {
         hasSharedLink: false,
         assetCount: 0,
         isActivityEnabled: true,
+        isPrivate: false,
         order: AssetOrder.Desc,
       });
     });
@@ -583,6 +584,22 @@ describe('/albums', () => {
         updatedAt: expect.any(String),
         albumName: 'New album name',
         description: 'An album description',
+      });
+    });
+
+    it('should mark an album as private', async () => {
+      const album = await utils.createAlbum(user1.accessToken, {
+        albumName: 'Private album',
+      });
+      const { status, body } = await request(app)
+        .patch(`/albums/${album.id}`)
+        .set('Authorization', `Bearer ${user1.accessToken}`)
+        .send({ isPrivate: true });
+      expect(status).toBe(200);
+      expect(body).toEqual({
+        ...album,
+        updatedAt: expect.any(String),
+        isPrivate: true,
       });
     });
 

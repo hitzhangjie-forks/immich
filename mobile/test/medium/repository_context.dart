@@ -197,6 +197,7 @@ class MediumRepositoryContext {
             updatedAt: .new(TestUtils.date(updatedAt)),
             description: .new(description ?? 'Description for album $id'),
             isActivityEnabled: .new(isActivityEnabled ?? false),
+            isPrivate: .new(false),
             order: .new(order ?? .asc),
             thumbnailAssetId: .new(thumbnailAssetId),
           ),

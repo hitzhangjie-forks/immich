@@ -90,6 +90,10 @@ const UpdateAlbumSchema = z
       }),
     albumThumbnailAssetId: z.uuidv4().optional().describe('Album thumbnail asset ID'),
     isActivityEnabled: z.boolean().optional().describe('Enable activity feed'),
+    isPrivate: z
+      .boolean()
+      .optional()
+      .describe('Hide album assets from Photos, Explore, Map, Search, People, and Memories'),
     order: AssetOrderSchema.optional(),
   })
   .meta({ id: 'UpdateAlbumDto' });
@@ -177,6 +181,7 @@ export const AlbumResponseSchema = z
     // TODO: use `isoDatetimeToDate` when using `ZodSerializerDto` on the controllers.
     endDate: z.string().meta({ format: 'date-time' }).optional().describe('End date (latest asset)'),
     isActivityEnabled: z.boolean().describe('Activity feed enabled'),
+    isPrivate: z.boolean().describe('Album assets are hidden from the library'),
     order: AssetOrderSchema.optional(),
     contributorCounts: z.array(ContributorCountResponseSchema).optional(),
   })
@@ -218,6 +223,7 @@ export type MapAlbumDto = {
   updatedAt: Date;
   id: string;
   isActivityEnabled: boolean;
+  isPrivate: boolean;
   order: AssetOrder;
 };
 
@@ -261,6 +267,7 @@ export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto
     endDate: asDateTimeString(endDate),
     assetCount: entity.assets?.length || 0,
     isActivityEnabled: entity.isActivityEnabled,
+    isPrivate: entity.isPrivate,
     order: entity.order,
   };
 };

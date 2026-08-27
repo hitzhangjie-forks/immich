@@ -36,6 +36,17 @@ from
 where
   "asset"."deletedAt" is null
   and "asset"."visibility" = $1
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and (
     "ownerId" in ($2)
     or exists (

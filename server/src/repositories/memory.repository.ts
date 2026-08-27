@@ -9,6 +9,7 @@ import { AssetOrderWithRandom, AssetVisibility } from 'src/enum';
 import { DB } from 'src/schema';
 import { MemoryTable } from 'src/schema/tables/memory.table';
 import { IBulkAsset } from 'src/types';
+import { notInPrivateAlbum } from 'src/utils/database';
 
 @Injectable()
 export class MemoryRepository implements IBulkAsset {
@@ -76,6 +77,7 @@ export class MemoryRepository implements IBulkAsset {
             .whereRef('memory_asset.memoriesId', '=', 'memory.id')
             .where('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
             .where('asset.deletedAt', 'is', null)
+            .where(notInPrivateAlbum)
             .where((eb) =>
               eb.not(
                 eb.exists(
@@ -195,7 +197,8 @@ export class MemoryRepository implements IBulkAsset {
             .whereRef('memory_asset.memoriesId', '=', 'memory.id')
             .orderBy('asset.fileCreatedAt', 'asc')
             .where('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
-            .where('asset.deletedAt', 'is', null),
+            .where('asset.deletedAt', 'is', null)
+            .where(notInPrivateAlbum),
         ).as('assets'),
       )
       .where('id', '=', id)

@@ -126,6 +126,7 @@ struct RemoteAlbum {
   let createdAt: Date
   let description: String?
   let isActivityEnabled: Bool
+  let isPrivate: Bool
   let name: String
   let order: Int
   let ownerId: String

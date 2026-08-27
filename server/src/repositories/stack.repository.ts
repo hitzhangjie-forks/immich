@@ -6,7 +6,7 @@ import { columns } from 'src/database';
 import { DummyValue, GenerateSql } from 'src/decorators';
 import { DB } from 'src/schema';
 import { StackTable } from 'src/schema/tables/stack.table';
-import { asUuid, withDefaultVisibility } from 'src/utils/database';
+import { asUuid, excludeAssetsInPrivateAlbums, withDefaultVisibility } from 'src/utils/database';
 
 export interface StackSearch {
   ownerId: string;
@@ -42,6 +42,7 @@ const withAssets = (eb: ExpressionBuilder<DB, 'stack'>, withTags = false) => {
       .where('asset.deletedAt', 'is', null)
       .whereRef('asset.stackId', '=', 'stack.id')
       .$call(withDefaultVisibility)
+      .$call(excludeAssetsInPrivateAlbums)
       .orderBy('asset.fileCreatedAt', 'asc'),
   ).as('assets');
 };

@@ -34,7 +34,18 @@ from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."fileCreatedAt" >= $1
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."fileCreatedAt" >= $1
   and "asset_exif"."lensModel" = $2
   and "asset"."ownerId" = any ($3::uuid[])
   and "asset"."isFavorite" = $4
@@ -54,7 +65,18 @@ from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."fileCreatedAt" >= $1
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."fileCreatedAt" >= $1
   and "asset_exif"."lensModel" = $2
   and "asset"."ownerId" = any ($3::uuid[])
   and "asset"."isFavorite" = $4
@@ -94,7 +116,18 @@ from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."fileCreatedAt" >= $1
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."fileCreatedAt" >= $1
   and "asset_exif"."lensModel" = $2
   and "asset"."ownerId" = any ($3::uuid[])
   and "asset"."isFavorite" = $4
@@ -139,7 +172,18 @@ from
   "asset"
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."fileCreatedAt" >= $1
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."fileCreatedAt" >= $1
   and "asset_exif"."lensModel" = $2
   and "asset"."ownerId" = any ($3::uuid[])
   and "asset"."isFavorite" = $4
@@ -188,7 +232,18 @@ from
   inner join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
   inner join "smart_search" on "asset"."id" = "smart_search"."assetId"
 where
-  "asset"."fileCreatedAt" >= $1
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."fileCreatedAt" >= $1
   and "asset_exif"."lensModel" = $2
   and "asset"."ownerId" = any ($3::uuid[])
   and "asset"."isFavorite" = $4
@@ -286,6 +341,17 @@ with recursive
         and "asset"."visibility" = $2
         and "asset"."type" = $3
         and "asset"."deletedAt" is null
+        and not exists (
+          select
+            1 as "exists"
+          from
+            "album_asset"
+            inner join "album" on "album"."id" = "album_asset"."albumId"
+            and "album"."isPrivate" = true
+            and "album"."deletedAt" is null
+          where
+            "album_asset"."assetId" = "asset"."id"
+        )
       order by
         "city"
       limit
@@ -310,6 +376,17 @@ with recursive
             and "asset"."visibility" = $6
             and "asset"."type" = $7
             and "asset"."deletedAt" is null
+            and not exists (
+              select
+                1 as "exists"
+              from
+                "album_asset"
+                inner join "album" on "album"."id" = "album_asset"."albumId"
+                and "album"."isPrivate" = true
+                and "album"."deletedAt" is null
+              where
+                "album_asset"."assetId" = "asset"."id"
+            )
             and "asset_exif"."city" > "cte"."city"
           order by
             "city"
@@ -365,6 +442,17 @@ where
   "ownerId" = any ($1::uuid[])
   and "visibility" = $2
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "state" is not null
   and "state" != $3
 
@@ -378,6 +466,17 @@ where
   "ownerId" = any ($1::uuid[])
   and "visibility" = $2
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "city" is not null
   and "city" != $3
 
@@ -391,6 +490,17 @@ where
   "ownerId" = any ($1::uuid[])
   and "visibility" = $2
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "make" is not null
   and "make" != $3
 
@@ -404,6 +514,17 @@ where
   "ownerId" = any ($1::uuid[])
   and "visibility" = $2
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "model" is not null
   and "model" != $3
 
@@ -417,6 +538,17 @@ where
   "ownerId" = any ($1::uuid[])
   and "visibility" = $2
   and "deletedAt" is null
+  and not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
   and "lensModel" is not null
   and "lensModel" != $3
 
@@ -454,7 +586,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and true
 order by
   "asset"."fileCreatedAt" desc,
@@ -496,7 +639,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  true
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and true
 order by
   "asset"."fileCreatedAt" desc,
   "asset"."id" desc
@@ -537,7 +691,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and "asset_exif"."city" = $2
 order by
   "asset"."fileCreatedAt" desc,
@@ -579,7 +744,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and "asset_exif"."city" is null
 order by
   "asset"."fileCreatedAt" desc,
@@ -621,7 +797,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and f_unaccent ("asset_exif"."description") ilike ('%' || f_unaccent ($2) || '%')
 order by
   "asset"."fileCreatedAt" desc,
@@ -663,7 +850,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and f_unaccent ("asset_exif"."description") not ilike ('%' || f_unaccent ($2) || '%')
 order by
   "asset"."fileCreatedAt" desc,
@@ -705,7 +903,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and f_unaccent ("asset"."originalFileName") ilike (f_unaccent ($2) || '%')
 order by
   "asset"."fileCreatedAt" desc,
@@ -747,7 +956,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and exists (
     select
     from
@@ -845,7 +1065,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and exists (
     select
       "asset_face"."assetId"
@@ -950,7 +1181,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and not exists (
     select
     from
@@ -1000,7 +1242,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and exists (
     select
       "tag_asset"."assetId"
@@ -1055,7 +1308,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and not exists (
     select
     from
@@ -1103,7 +1367,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and exists (
     select
     from
@@ -1152,7 +1427,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset_exif"."fileSizeInByte" <= $2
     and "asset_exif"."fileSizeInByte" >= $3
@@ -1197,7 +1483,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and "asset"."fileCreatedAt" = $2
 order by
   "asset"."fileCreatedAt" desc,
@@ -1239,7 +1536,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset"."fileCreatedAt" < $2
     and "asset"."fileCreatedAt" >= $3
@@ -1284,7 +1592,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and true
 order by
   "asset_exif"."fileSizeInByte" desc nulls last,
@@ -1327,7 +1646,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and true
 order by
   "asset_exif"."rating" asc nulls last,
@@ -1369,7 +1699,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset"."isFavorite" = $2
     or exists (
@@ -1423,7 +1764,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset"."fileCreatedAt" < $2
     and "asset"."fileCreatedAt" >= $3
@@ -1452,7 +1804,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and true
 
 -- SearchRepository.searchStatisticsV3 (with-filter)
@@ -1462,7 +1825,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset_exif"."fileSizeInByte" >= $2
     and "asset"."fileCreatedAt" < $3
@@ -1476,7 +1850,18 @@ from
   "asset"
   left join "asset_exif" on "asset"."id" = "asset_exif"."assetId"
 where
-  "asset"."ownerId" = any ($1::uuid[])
+  not exists (
+    select
+      1 as "exists"
+    from
+      "album_asset"
+      inner join "album" on "album"."id" = "album_asset"."albumId"
+      and "album"."isPrivate" = true
+      and "album"."deletedAt" is null
+    where
+      "album_asset"."assetId" = "asset"."id"
+  )
+  and "asset"."ownerId" = any ($1::uuid[])
   and (
     "asset"."isFavorite" = $2
     or not exists (

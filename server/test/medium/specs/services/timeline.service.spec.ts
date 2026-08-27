@@ -45,6 +45,61 @@ describe(TimelineService.name, () => {
       ]);
     });
 
+    it('should hide assets in a private album from the library timeline', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user });
+      const localDateTime = new Date('1970-02-10');
+      const { asset: visible } = await ctx.newAsset({ ownerId: user.id, localDateTime });
+      const { asset: hidden } = await ctx.newAsset({ ownerId: user.id, localDateTime });
+      await ctx.newExif({ assetId: visible.id, make: 'Canon' });
+      await ctx.newExif({ assetId: hidden.id, make: 'Canon' });
+
+      const { album } = await ctx.newAlbum({ ownerId: user.id, isPrivate: true }, [hidden.id]);
+
+      await expect(sut.getTimeBuckets(auth, { visibility: AssetVisibility.Timeline })).resolves.toEqual([
+        { count: 1, timeBucket: '1970-02-01' },
+      ]);
+
+      await expect(
+        sut.getTimeBuckets(auth, { visibility: AssetVisibility.Timeline, albumId: album.id }),
+      ).resolves.toEqual([{ count: 1, timeBucket: '1970-02-01' }]);
+    });
+
+    it('should hide an asset that is also in a public album when it belongs to a private album', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user });
+      const localDateTime = new Date('1970-03-10');
+      const { asset } = await ctx.newAsset({ ownerId: user.id, localDateTime });
+      await ctx.newExif({ assetId: asset.id, make: 'Canon' });
+
+      const { album: publicAlbum } = await ctx.newAlbum({ ownerId: user.id }, [asset.id]);
+      await ctx.newAlbum({ ownerId: user.id, isPrivate: true }, [asset.id]);
+
+      await expect(sut.getTimeBuckets(auth, { visibility: AssetVisibility.Timeline })).resolves.toEqual([]);
+
+      await expect(
+        sut.getTimeBuckets(auth, { visibility: AssetVisibility.Timeline, albumId: publicAlbum.id }),
+      ).resolves.toEqual([{ count: 1, timeBucket: '1970-03-01' }]);
+    });
+
+    it('should hide a partner asset that belongs to a private album', async () => {
+      const { sut, ctx } = setup();
+      const { user } = await ctx.newUser();
+      const { user: partner } = await ctx.newUser();
+      await ctx.newPartner({ sharedById: partner.id, sharedWithId: user.id });
+      const localDateTime = new Date('1970-04-10');
+      const { asset } = await ctx.newAsset({ ownerId: partner.id, localDateTime });
+      await ctx.newExif({ assetId: asset.id, make: 'Canon' });
+      await ctx.newAlbum({ ownerId: partner.id, isPrivate: true }, [asset.id]);
+
+      const auth = factory.auth({ user });
+      await expect(
+        sut.getTimeBuckets(auth, { visibility: AssetVisibility.Timeline, withPartners: true }),
+      ).resolves.toEqual([]);
+    });
+
     it('should return error if time bucket is requested with partners asset and archived', async () => {
       const { sut } = setup();
       const auth = factory.auth();

@@ -3,7 +3,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { DummyValue, GenerateSql } from 'src/decorators';
 import { AssetVisibility } from 'src/enum';
 import { DB } from 'src/schema';
-import { asUuid, withExif } from 'src/utils/database';
+import { asUuid, excludeAssetsInPrivateAlbums, withExif } from 'src/utils/database';
 
 export class ViewRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
@@ -20,6 +20,7 @@ export class ViewRepository {
       .where('fileCreatedAt', 'is not', null)
       .where('fileModifiedAt', 'is not', null)
       .where('localDateTime', 'is not', null)
+      .$call(excludeAssetsInPrivateAlbums)
       .orderBy('directoryPath', 'asc')
       .execute();
 
@@ -40,6 +41,7 @@ export class ViewRepository {
       .where('fileCreatedAt', 'is not', null)
       .where('fileModifiedAt', 'is not', null)
       .where('localDateTime', 'is not', null)
+      .$call(excludeAssetsInPrivateAlbums)
       .where('originalPath', 'like', `%${normalizedPath}/%`)
       .where('originalPath', 'not like', `%${normalizedPath}/%/%`)
       .orderBy(

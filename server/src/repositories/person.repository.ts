@@ -10,7 +10,7 @@ import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { PersonGroupTable } from 'src/schema/tables/person-group.table';
 import { PersonTable } from 'src/schema/tables/person.table';
-import { asUuid, dummy, inSharedAlbum, removeUndefinedKeys, withFilePath } from 'src/utils/database';
+import { asUuid, dummy, inSharedAlbum, notInPrivateAlbum, removeUndefinedKeys, withFilePath } from 'src/utils/database';
 import { paginationHelper, PaginationOptions } from 'src/utils/pagination';
 
 export interface PersonSearchOptions {
@@ -225,7 +225,8 @@ export class PersonRepository {
           .onRef('asset_face.assetId', '=', 'asset.id')
           .onRef('asset.ownerId', '=', 'person.ownerId')
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
-          .on('asset.deletedAt', 'is', null),
+          .on('asset.deletedAt', 'is', null)
+          .on((eb) => notInPrivateAlbum(eb)),
       )
       .where('person.ownerId', '=', userId)
       .where('asset_face.deletedAt', 'is', null)
@@ -424,6 +425,7 @@ export class PersonRepository {
           .onRef('asset.id', '=', 'asset_face.assetId')
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
           .on('asset.deletedAt', 'is', null)
+          .on((eb) => notInPrivateAlbum(eb))
           .on((eb) => eb.or([eb('asset.ownerId', '=', asUuid(userId)), inSharedAlbum(eb, userId)])),
       )
       .select((eb) => eb.fn.count(eb.fn('distinct', ['asset.id'])).as('count'))
@@ -455,7 +457,8 @@ export class PersonRepository {
                   .selectFrom('asset')
                   .whereRef('asset.id', '=', 'asset_face.assetId')
                   .where('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
-                  .where('asset.deletedAt', 'is', null),
+                  .where('asset.deletedAt', 'is', null)
+                  .where(notInPrivateAlbum),
               ),
             ),
         ),

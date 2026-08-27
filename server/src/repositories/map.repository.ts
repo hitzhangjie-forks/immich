@@ -14,6 +14,7 @@ import { SystemMetadataRepository } from 'src/repositories/system-metadata.repos
 import { DB } from 'src/schema';
 import { GeodataPlacesTable } from 'src/schema/tables/geodata-places.table';
 import { NaturalEarthCountriesTable } from 'src/schema/tables/natural-earth-countries.table';
+import { excludeAssetsInPrivateAlbums } from 'src/utils/database';
 
 export interface MapMarkerSearchOptions {
   isArchived?: boolean;
@@ -97,6 +98,7 @@ export class MapRepository {
       .$if(isArchived === false || isArchived === undefined, (qb) =>
         qb.where('asset.visibility', '=', AssetVisibility.Timeline),
       )
+      .$call(excludeAssetsInPrivateAlbums)
       .$if(isFavorite !== undefined, (q) => q.where('isFavorite', '=', isFavorite!))
       .$if(fileCreatedAfter !== undefined, (q) => q.where('fileCreatedAt', '>=', fileCreatedAfter!))
       .$if(fileCreatedBefore !== undefined, (q) => q.where('fileCreatedAt', '<=', fileCreatedBefore!))
