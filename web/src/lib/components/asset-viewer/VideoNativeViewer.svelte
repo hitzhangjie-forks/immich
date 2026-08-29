@@ -9,7 +9,8 @@
   import { mediaCapabilitiesManager } from '$lib/managers/media-capabilities-manager.svelte';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '$lib/stores/preferences.store';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '$lib/utils';
-  import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
+  import { getTrimRange, type VideoTrimRange } from '$lib/utils/video-trim';
+  import { AssetMediaSize, AssetTypeEnum, getAssetEdits, type AssetResponseDto } from '@immich/sdk';
   import { Icon, LoadingSpinner, shortcuts } from '@immich/ui';
   import {
     mdiCheck,
@@ -76,6 +77,8 @@
 
   let videoPlayer: HTMLVideoElement | undefined = $state();
   let isLoading = $state(true);
+  let trimRange: VideoTrimRange | null = $state(null);
+  const nativeLoop = $derived($loopVideoPreference && loopVideo && !trimRange);
   let assetFileUrl = $derived.by(() => {
     if (featureFlagsManager.value.realtimeTranscoding) {
       return getAssetHlsUrl(assetId);
@@ -276,6 +279,9 @@
 
   const handleCanPlay = async (video: HTMLVideoElement) => {
     try {
+      if (trimRange && video.currentTime < trimRange.startTime) {
+        video.currentTime = trimRange.startTime;
+      }
       if (!video.paused) {
         await video.play();
         onVideoStarted();
@@ -325,6 +331,62 @@
   // The time is only refreshed on HLS fragment decode by default,
   // so manually emit events on seek to update it immediately.
   const onSeeking = (event: Event) => event.currentTarget?.dispatchEvent(new Event('timeupdate'));
+
+  $effect(() => {
+    const id = asset.id;
+    const shouldLoad = asset.isEdited && !playOriginalVideo && asset.type === AssetTypeEnum.Video;
+    if (!shouldLoad) {
+      trimRange = null;
+      return;
+    }
+
+    let cancelled = false;
+    void getAssetEdits({ id })
+      .then((response) => {
+        if (!cancelled) {
+          trimRange = getTrimRange(response.edits);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          trimRange = null;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  const clampToTrim = (time: number) => {
+    if (!trimRange) {
+      return time;
+    }
+
+    return Math.min(Math.max(time, trimRange.startTime), trimRange.endTime);
+  };
+
+  const onTimeUpdate = (event: Event) => {
+    const video = event.currentTarget as HTMLVideoElement;
+    if (!trimRange || playOriginalVideo) {
+      return;
+    }
+
+    if (video.currentTime + 0.05 < trimRange.startTime) {
+      video.currentTime = trimRange.startTime;
+      return;
+    }
+
+    if (!video.paused && video.currentTime + 0.05 >= trimRange.endTime) {
+      if ($loopVideoPreference && loopVideo) {
+        video.currentTime = trimRange.startTime;
+        return;
+      }
+
+      video.pause();
+      onVideoEnded();
+    }
+  };
 </script>
 
 <svelte:body
@@ -336,13 +398,13 @@
     {
       shortcut: { shift: true, key: 'ArrowLeft' },
       onShortcut: () =>
-        videoPlayer ? (videoPlayer.currentTime = Math.max(videoPlayer.currentTime - 0.4, 0)) : undefined,
+        videoPlayer ? (videoPlayer.currentTime = clampToTrim(Math.max(videoPlayer.currentTime - 0.4, 0))) : undefined,
     },
     {
       shortcut: { shift: true, key: 'ArrowRight' },
       onShortcut: () =>
         videoPlayer
-          ? (videoPlayer.currentTime = Math.min(videoPlayer.currentTime + 0.4, videoPlayer.duration))
+          ? (videoPlayer.currentTime = clampToTrim(Math.min(videoPlayer.currentTime + 0.4, videoPlayer.duration)))
           : undefined,
     },
   ]}
@@ -378,7 +440,7 @@
           <hls-video
             bind:this={videoPlayer}
             slot="media"
-            loop={$loopVideoPreference && loopVideo}
+            loop={nativeLoop}
             autoplay={$autoPlayVideo}
             disablePictureInPicture
             playsinline
@@ -387,6 +449,7 @@
             oncanplay={(e: Event) => handleCanPlay(e.currentTarget as HTMLVideoElement)}
             onended={onVideoEnded}
             onseeking={onSeeking}
+            ontimeupdate={onTimeUpdate}
             onplaying={(e: Event) => {
               if (hasFocused) {
                 return;
@@ -403,7 +466,7 @@
             bind:this={videoPlayer}
             slot="media"
             src={assetFileUrl}
-            loop={$loopVideoPreference && loopVideo}
+            loop={nativeLoop}
             autoplay={$autoPlayVideo}
             disablePictureInPicture
             playsinline
@@ -412,6 +475,7 @@
             oncanplay={(e) => handleCanPlay(e.currentTarget)}
             onended={onVideoEnded}
             onseeking={onSeeking}
+            ontimeupdate={onTimeUpdate}
             onplaying={(e) => {
               if (hasFocused) {
                 return;

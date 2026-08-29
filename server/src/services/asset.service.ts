@@ -20,7 +20,13 @@ import {
   mapStats,
 } from 'src/dtos/asset.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetEditAction, AssetEditActionItem, AssetEditsCreateDto, AssetEditsResponseDto } from 'src/dtos/editing.dto';
+import {
+  AssetEditAction,
+  AssetEditActionItem,
+  AssetEditsCreateDto,
+  AssetEditsResponseDto,
+  AssetTrimDto,
+} from 'src/dtos/editing.dto';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto';
 import {
   AssetFileType,
@@ -532,6 +538,10 @@ export class AssetService extends BaseService {
       throw new BadRequestException('Asset not found');
     }
 
+    if (dto.edits.some((edit) => edit.action === AssetEditAction.Trim)) {
+      throw new BadRequestException('Video trim must be applied through the trim endpoint');
+    }
+
     if (asset.type !== AssetType.Image) {
       throw new BadRequestException('Only images can be edited');
     }
@@ -598,6 +608,55 @@ export class AssetService extends BaseService {
     }
 
     await this.assetEditRepository.replaceAll(id, []);
+    await this.jobRepository.queue({ name: JobName.AssetEditThumbnailGeneration, data: { id } });
+  }
+
+  async trimAsset(auth: AuthDto, id: string, dto: AssetTrimDto): Promise<void> {
+    await this.requireAccess({ auth, permission: Permission.AssetEditCreate, ids: [id] });
+
+    const asset = await this.assetRepository.getById(id);
+    if (!asset) {
+      throw new BadRequestException('Asset not found');
+    }
+
+    if (asset.type !== AssetType.Video) {
+      throw new BadRequestException('Only videos can be trimmed');
+    }
+
+    if (asset.visibility === AssetVisibility.Hidden) {
+      throw new BadRequestException('Hidden videos cannot be trimmed');
+    }
+
+    if (asset.duration) {
+      const durationSeconds = asset.duration / 1000;
+      if (dto.startTime >= durationSeconds) {
+        throw new BadRequestException('startTime must be less than the video duration');
+      }
+      if (dto.endTime > durationSeconds + 0.5) {
+        throw new BadRequestException('endTime cannot exceed the video duration');
+      }
+    }
+
+    if (dto.endTime - dto.startTime < 0.5) {
+      throw new BadRequestException('Trimmed video must be at least 0.5 seconds long');
+    }
+
+    if (dto.saveAsNew) {
+      await this.jobRepository.queue({
+        name: JobName.AssetTrimVideo,
+        data: {
+          id,
+          startTime: dto.startTime,
+          endTime: dto.endTime,
+          accurate: dto.accurate ?? false,
+        },
+      });
+      return;
+    }
+
+    await this.assetEditRepository.replaceAll(id, [
+      { action: AssetEditAction.Trim, parameters: { startTime: dto.startTime, endTime: dto.endTime } },
+    ]);
     await this.jobRepository.queue({ name: JobName.AssetEditThumbnailGeneration, data: { id } });
   }
 }

@@ -28,7 +28,7 @@ import { PersonFactory } from 'test/factories/person.factory';
 import { probeStub } from 'test/fixtures/media.stub';
 import { personThumbnailStub } from 'test/fixtures/person.stub';
 import { systemConfigStub } from 'test/fixtures/system-config.stub';
-import { getForGenerateThumbnail } from 'test/mappers';
+import { getForAsset, getForGenerateThumbnail } from 'test/mappers';
 import { factory, newUuid } from 'test/small.factory';
 import { makeStream, newTestService, ServiceMocks } from 'test/utils';
 
@@ -1379,12 +1379,42 @@ describe(MediaService.name, () => {
       mocks.media.getImageMetadata.mockResolvedValue({ width: 100, height: 100, isTransparent: false });
     });
 
-    it('should skip videos', async () => {
+    it('should skip videos without trim edits', async () => {
       const asset = AssetFactory.from({ type: AssetType.Video }).exif().build();
       mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(getForGenerateThumbnail(asset));
 
       await expect(sut.handleAssetEditThumbnailGeneration({ id: asset.id })).resolves.toBe(JobStatus.Success);
       expect(mocks.media.generateThumbnail).not.toHaveBeenCalled();
+      expect(mocks.media.transcode).not.toHaveBeenCalled();
+    });
+
+    it('should generate edited video thumbnails from the trim start', async () => {
+      const asset = AssetFactory.from({ type: AssetType.Video, originalPath: '/original/path.ext' })
+        .exif()
+        .edit({ action: AssetEditAction.Trim, parameters: { startTime: 4.5, endTime: 40 } })
+        .build();
+      mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue({
+        ...getForGenerateThumbnail(asset),
+        ...probeStub.videoStream2160p,
+      });
+      const thumbhashBuffer = Buffer.from('a thumbhash', 'utf8');
+      mocks.media.generateThumbhash.mockResolvedValue(thumbhashBuffer);
+
+      await sut.handleAssetEditThumbnailGeneration({ id: asset.id });
+
+      expect(mocks.media.transcode).toHaveBeenCalledWith(
+        '/original/path.ext',
+        expect.any(String),
+        expect.objectContaining({
+          inputOptions: expect.arrayContaining(['-ss', '4.500']),
+        }),
+      );
+      expect(mocks.asset.upsertFiles).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ type: AssetFileType.Preview, isEdited: true }),
+          expect.objectContaining({ type: AssetFileType.Thumbnail, isEdited: true }),
+        ]),
+      );
     });
 
     it('should upsert 3 edited files for edit jobs', async () => {
@@ -3868,6 +3898,123 @@ describe(MediaService.name, () => {
           inputOptions: expect.any(Array),
           outputOptions: expect.arrayContaining(['-c:a', 'copy']),
           twoPass: false,
+        }),
+      );
+    });
+  });
+
+  describe('handleVideoTrim', () => {
+    const probeResult = {
+      format: { formatName: 'mp4', formatLongName: 'MP4', duration: 60, bitrate: 1000 },
+      videoStreams: [],
+      audioStreams: [],
+    };
+
+    it('should skip when the asset is missing', async () => {
+      mocks.asset.getById.mockResolvedValue(void 0);
+
+      await expect(sut.handleVideoTrim({ id: 'video-id', startTime: 3, endTime: 50 })).resolves.toBe(JobStatus.Failed);
+      expect(mocks.media.transcode).not.toHaveBeenCalled();
+    });
+
+    it('should skip non-video assets', async () => {
+      mocks.asset.getById.mockResolvedValue(getForAsset(AssetFactory.create({ type: AssetType.Image })));
+
+      await expect(sut.handleVideoTrim({ id: 'image-id', startTime: 3, endTime: 50 })).resolves.toBe(JobStatus.Skipped);
+      expect(mocks.media.transcode).not.toHaveBeenCalled();
+    });
+
+    it('should export a new asset and leave the original unchanged', async () => {
+      const asset = AssetFactory.from({
+        id: 'video-id',
+        type: AssetType.Video,
+        originalPath: '/data/library/video.mp4',
+        duration: 60_000,
+      })
+        .exif({ fileSizeInByte: 5000 })
+        .file({ type: AssetFileType.EncodedVideo, path: '/encoded/video.mp4' })
+        .build();
+      const newAsset = { id: 'new-video-id', ownerId: asset.ownerId };
+
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.media.probe.mockResolvedValue(probeResult);
+      mocks.crypto.randomUUID.mockReturnValue('aabbccdd-1111-2222-3333-444444444444');
+      mocks.crypto.hashFile.mockResolvedValue(Buffer.from('new-checksum'));
+      mocks.storage.stat.mockResolvedValue({ size: 4000, mtime: new Date('2026-01-01') } as any);
+      mocks.asset.create.mockResolvedValue(newAsset as any);
+
+      await expect(sut.handleVideoTrim({ id: asset.id, startTime: 3, endTime: 50 })).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.media.transcode).toHaveBeenCalledWith(
+        '/data/library/video.mp4',
+        expect.stringContaining('aabbccdd-1111-2222-3333-444444444444.mp4'),
+        expect.objectContaining({
+          outputOptions: expect.arrayContaining(['-ss', '3.000', '-t', '47.000', '-c', 'copy']),
+        }),
+      );
+      expect(mocks.storage.rename).not.toHaveBeenCalled();
+      expect(mocks.asset.update).not.toHaveBeenCalled();
+      expect(mocks.asset.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ownerId: asset.ownerId,
+          originalFileName: asset.originalFileName,
+          type: AssetType.Video,
+        }),
+      );
+      expect(mocks.album.copyAlbums).toHaveBeenCalledWith({
+        sourceAssetId: asset.id,
+        targetAssetId: newAsset.id,
+      });
+      expect(mocks.user.updateUsage).toHaveBeenCalledWith(asset.ownerId, 4000);
+      expect(mocks.job.queue).toHaveBeenCalledWith({
+        name: JobName.AssetExtractMetadata,
+        data: { id: newAsset.id, source: 'upload' },
+      });
+    });
+
+    it('should export a trimmed copy of an external library video', async () => {
+      const asset = AssetFactory.from({
+        type: AssetType.Video,
+        isExternal: true,
+        originalPath: '/external/video.mp4',
+      }).build();
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.media.probe.mockResolvedValue(probeResult);
+      mocks.crypto.randomUUID.mockReturnValue('aabbccdd-1111-2222-3333-444444444444');
+      mocks.crypto.hashFile.mockResolvedValue(Buffer.from('new-checksum'));
+      mocks.storage.stat.mockResolvedValue({ size: 4000, mtime: new Date() } as any);
+      mocks.asset.create.mockResolvedValue({ id: 'new-video-id', ownerId: asset.ownerId } as any);
+
+      await expect(sut.handleVideoTrim({ id: asset.id, startTime: 3, endTime: 50 })).resolves.toBe(JobStatus.Success);
+      expect(mocks.media.transcode).toHaveBeenCalled();
+      expect(mocks.asset.create).toHaveBeenCalled();
+    });
+
+    it('should fall back to re-encode when stream copy fails', async () => {
+      const asset = AssetFactory.from({
+        id: 'video-id',
+        type: AssetType.Video,
+        originalPath: '/data/library/video.mp4',
+      })
+        .exif({ fileSizeInByte: 5000 })
+        .build();
+
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.media.probe.mockResolvedValue(probeResult);
+      mocks.media.transcode.mockRejectedValueOnce(new Error('copy failed')).mockResolvedValueOnce(undefined);
+      mocks.crypto.randomUUID.mockReturnValue('aabbccdd-1111-2222-3333-444444444444');
+      mocks.crypto.hashFile.mockResolvedValue(Buffer.from('new-checksum'));
+      mocks.storage.stat.mockResolvedValue({ size: 4000, mtime: new Date() } as any);
+      mocks.asset.create.mockResolvedValue({ id: 'new-video-id', ownerId: asset.ownerId } as any);
+
+      await expect(sut.handleVideoTrim({ id: asset.id, startTime: 2, endTime: 40 })).resolves.toBe(JobStatus.Success);
+
+      expect(mocks.media.transcode).toHaveBeenNthCalledWith(
+        2,
+        '/data/library/video.mp4',
+        expect.stringContaining('aabbccdd-1111-2222-3333-444444444444.mp4'),
+        expect.objectContaining({
+          outputOptions: expect.arrayContaining(['-c:v', 'libx264']),
         }),
       );
     });

@@ -226,6 +226,15 @@ export interface IEntityJob extends IBaseJob {
   notify?: boolean;
 }
 
+export interface IAssetTrimJob extends IEntityJob {
+  /** Inclusive start of the kept range, in seconds. Used when exporting a new video file. */
+  startTime: number;
+  /** Exclusive end of the kept range, in seconds. */
+  endTime: number;
+  /** When true, re-encode for a frame-accurate cut. Stream copy is used otherwise. */
+  accurate?: boolean;
+}
+
 export interface IAssetDeleteJob extends IEntityJob {
   deleteOnDisk: boolean;
 }
@@ -340,6 +349,7 @@ export type JobItem =
   // Transcoding
   | { name: JobName.AssetEncodeVideoQueueAll; data: IBaseJob }
   | { name: JobName.AssetEncodeVideo; data: IEntityJob }
+  | { name: JobName.AssetTrimVideo; data: IAssetTrimJob }
 
   // Thumbnails
   | { name: JobName.AssetGenerateThumbnailsQueueAll; data: IBaseJob }

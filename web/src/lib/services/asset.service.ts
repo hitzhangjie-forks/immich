@@ -16,6 +16,7 @@ import {
   mdiCogRefreshOutline,
   mdiCompare,
   mdiContentCopy,
+  mdiContentCut,
   mdiDatabaseRefreshOutline,
   mdiDownload,
   mdiDownloadBox,
@@ -48,6 +49,7 @@ import AssetAddToAlbumModal from '$lib/modals/AssetAddToAlbumModal.svelte';
 import AssetTagModal from '$lib/modals/AssetTagModal.svelte';
 import ProfileImageCropperModal from '$lib/modals/ProfileImageCropperModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
+import TrimVideoModal from '$lib/modals/TrimVideoModal.svelte';
 import { Route } from '$lib/route';
 import { SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
 import { getAssetMediaUrl, getSharedLink, sleep } from '$lib/utils';
@@ -250,6 +252,19 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     shortcuts: [{ key: 'e' }],
   };
 
+  const Trim: ActionItem = {
+    title: $t('trim_video'),
+    icon: mdiContentCut,
+    $if: () =>
+      !sharedLink &&
+      isOwner &&
+      asset.type === AssetTypeEnum.Video &&
+      !asset.libraryId &&
+      !asset.isTrashed &&
+      asset.visibility !== AssetVisibility.Locked,
+    onAction: () => modalManager.show(TrimVideoModal, { asset }),
+  };
+
   const SetProfilePicture: ActionItem = {
     title: $t('set_as_profile_picture'),
     icon: mdiAccountCircleOutline,
@@ -316,6 +331,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
     Tag,
     TagPeople,
     Edit,
+    Trim,
     SetProfilePicture,
     ViewInTimeline,
     ViewSimilar,

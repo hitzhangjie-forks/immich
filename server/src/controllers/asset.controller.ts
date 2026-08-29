@@ -18,7 +18,7 @@ import {
   UpdateAssetDto,
 } from 'src/dtos/asset.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetEditsCreateDto, AssetEditsResponseDto } from 'src/dtos/editing.dto';
+import { AssetEditsCreateDto, AssetEditsResponseDto, AssetTrimDto } from 'src/dtos/editing.dto';
 import { AssetOcrResponseDto } from 'src/dtos/ocr.dto';
 import { ApiTag, Permission, RouteKey } from 'src/enum';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
@@ -267,5 +267,18 @@ export class AssetController {
   })
   removeAssetEdits(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<void> {
     return this.service.removeAssetEdits(auth, id);
+  }
+
+  @Post(':id/trim')
+  @Authenticated({ permission: Permission.AssetEditCreate })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Endpoint({
+    summary: 'Trim a video asset',
+    description:
+      'Cut the intro and/or outro of a video. By default this stores a non-destructive trim edit (playback and cover use the kept range; the original file is unchanged and can be restored). Set saveAsNew to export a new video file with ffmpeg.',
+    history: new HistoryBuilder().added('v2.5.0').alpha('v2.5.0'),
+  })
+  trimAsset(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto, @Body() dto: AssetTrimDto): Promise<void> {
+    return this.service.trimAsset(auth, id, dto);
   }
 }

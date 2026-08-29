@@ -774,4 +774,60 @@ describe(AssetService.name, () => {
       expect(mocks.assetEdit.replaceAll).not.toHaveBeenCalled();
     });
   });
+
+  describe('trimAsset', () => {
+    it('should save a non-destructive trim edit', async () => {
+      const asset = AssetFactory.create({ type: AssetType.Video, duration: 60_000 });
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.assetEdit.replaceAll.mockResolvedValue([]);
+
+      await sut.trimAsset(authStub.admin, asset.id, { startTime: 3, endTime: 55 });
+
+      expect(mocks.assetEdit.replaceAll).toHaveBeenCalledWith(asset.id, [
+        { action: AssetEditAction.Trim, parameters: { startTime: 3, endTime: 55 } },
+      ]);
+      expect(mocks.job.queue).toHaveBeenCalledWith({
+        name: JobName.AssetEditThumbnailGeneration,
+        data: { id: asset.id },
+      });
+      expect(mocks.job.queue).not.toHaveBeenCalledWith(expect.objectContaining({ name: JobName.AssetTrimVideo }));
+    });
+
+    it('should queue a save-as-new trim job', async () => {
+      const asset = AssetFactory.create({ type: AssetType.Video, duration: 60_000 });
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+
+      await sut.trimAsset(authStub.admin, asset.id, { startTime: 3, endTime: 55, saveAsNew: true });
+
+      expect(mocks.job.queue).toHaveBeenCalledWith({
+        name: JobName.AssetTrimVideo,
+        data: { id: asset.id, startTime: 3, endTime: 55, accurate: false },
+      });
+      expect(mocks.assetEdit.replaceAll).not.toHaveBeenCalled();
+    });
+
+    it('should reject trimming images', async () => {
+      const asset = AssetFactory.create({ type: AssetType.Image });
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+
+      await expect(sut.trimAsset(authStub.admin, asset.id, { startTime: 0, endTime: 10 })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(mocks.job.queue).not.toHaveBeenCalled();
+    });
+
+    it('should allow trimming external library videos', async () => {
+      const asset = AssetFactory.create({ type: AssetType.Video, isExternal: true, duration: 60_000 });
+      mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.assetEdit.replaceAll.mockResolvedValue([]);
+
+      await sut.trimAsset(authStub.admin, asset.id, { startTime: 0, endTime: 10 });
+
+      expect(mocks.assetEdit.replaceAll).toHaveBeenCalled();
+    });
+  });
 });

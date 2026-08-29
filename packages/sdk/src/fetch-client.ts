@@ -1355,12 +1355,18 @@ export type RotateParameters = {
 export type MirrorParameters = {
     axis: MirrorAxis;
 };
+export type TrimParameters = {
+    /** End of the kept range in seconds. Everything after this is cut (outro). */
+    endTime: number;
+    /** Start of the kept range in seconds. Everything before this is cut (intro). */
+    startTime: number;
+};
 export type AssetEditActionItemResponseDto = {
     action: AssetEditAction;
     /** Asset edit ID */
     id: string;
-    /** List of edit actions to apply (crop, rotate, or mirror) */
-    parameters: CropParameters | RotateParameters | MirrorParameters;
+    /** List of edit actions to apply (crop, rotate, mirror, or trim) */
+    parameters: CropParameters | RotateParameters | MirrorParameters | TrimParameters;
 };
 export type AssetEditsResponseDto = {
     /** Asset ID these edits belong to */
@@ -1370,12 +1376,22 @@ export type AssetEditsResponseDto = {
 };
 export type AssetEditActionItemDto = {
     action: AssetEditAction;
-    /** List of edit actions to apply (crop, rotate, or mirror) */
-    parameters: CropParameters | RotateParameters | MirrorParameters;
+    /** List of edit actions to apply (crop, rotate, mirror, or trim) */
+    parameters: CropParameters | RotateParameters | MirrorParameters | TrimParameters;
 };
 export type AssetEditsCreateDto = {
-    /** List of edit actions to apply (crop, rotate, or mirror) */
+    /** List of edit actions to apply (crop, rotate, mirror, or trim) */
     edits: AssetEditActionItemDto[];
+};
+export type AssetTrimDto = {
+    /** Only used with saveAsNew. When true, re-encode for a frame-accurate cut. Stream copy is used by default. */
+    accurate?: boolean;
+    /** End of the kept range in seconds. Everything after this is cut (outro). */
+    endTime: number;
+    /** When true, export a new video file with ffmpeg. The original is left unchanged. When false (default), store a non-destructive trim edit. */
+    saveAsNew?: boolean;
+    /** Start of the kept range in seconds. Everything before this is cut (intro). */
+    startTime: number;
 };
 export type AssetMetadataResponseDto = {
     /** Metadata key */
@@ -4629,6 +4645,19 @@ export function editAsset({ id, assetEditsCreateDto }: {
         ...opts,
         method: "PUT",
         body: assetEditsCreateDto
+    })));
+}
+/**
+ * Trim a video asset
+ */
+export function trimAsset({ id, assetTrimDto }: {
+    id: string;
+    assetTrimDto: AssetTrimDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/assets/${encodeURIComponent(id)}/trim`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: assetTrimDto
     })));
 }
 /**
@@ -7934,7 +7963,8 @@ export enum AssetTypeEnum {
 export enum AssetEditAction {
     Crop = "crop",
     Rotate = "rotate",
-    Mirror = "mirror"
+    Mirror = "mirror",
+    Trim = "trim"
 }
 export enum MirrorAxis {
     Horizontal = "horizontal",

@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { parse } from 'node:path';
 import { FACE_THUMBNAIL_SIZE } from 'src/constants';
 import { ImagePathOptions, StorageCore, ThumbnailPathEntity } from 'src/cores/storage.core';
 import { AssetFile } from 'src/database';
 import { OnEvent, OnJob } from 'src/decorators';
 import { ConfigFFmpegDto, SystemConfig } from 'src/dtos/config.dto';
-import { AssetEditAction, CropParameters } from 'src/dtos/editing.dto';
+import { AssetEditAction, CropParameters, getTrimParameters } from 'src/dtos/editing.dto';
 import {
   AssetFileType,
   AssetType,
   AssetVisibility,
   AudioCodec,
+  ChecksumAlgorithm,
   Colorspace,
   ImageFormat,
   ImmichWorker,
@@ -34,6 +36,7 @@ import {
   ImageDimensions,
   JobItem,
   JobOf,
+  TranscodeCommand,
   VideoFormat,
   VideoInterfaces,
   VideoStreamInfo,
@@ -168,7 +171,7 @@ export class MediaService extends BaseService {
     );
 
     let thumbhash: Buffer | undefined = generated?.thumbhash;
-    if (!thumbhash) {
+    if (!thumbhash && asset.type === AssetType.Image) {
       const extractedImage = await this.extractOriginalImage(asset, config.image);
       const { info, data, colorspace } = extractedImage;
 
@@ -180,7 +183,7 @@ export class MediaService extends BaseService {
       });
     }
 
-    if (!asset.thumbhash || Buffer.compare(asset.thumbhash, thumbhash) !== 0) {
+    if (thumbhash && (!asset.thumbhash || Buffer.compare(asset.thumbhash, thumbhash) !== 0)) {
       await this.assetRepository.update({ id: asset.id, thumbhash });
     }
 
@@ -489,18 +492,22 @@ export class MediaService extends BaseService {
     };
   }
 
-  private async generateVideoThumbnails(asset: ThumbnailAsset, { ffmpeg, image }: SystemConfig) {
+  private async generateVideoThumbnails(
+    asset: ThumbnailAsset,
+    { ffmpeg, image }: SystemConfig,
+    { isEdited = false, seekSeconds = 0 }: { isEdited?: boolean; seekSeconds?: number } = {},
+  ) {
     const previewFile = this.getImageFile(asset, {
       fileType: AssetFileType.Preview,
       format: image.preview.format,
-      isEdited: false,
+      isEdited,
       isProgressive: false,
       isTransparent: false,
     });
     const thumbnailFile = this.getImageFile(asset, {
       fileType: AssetFileType.Thumbnail,
       format: image.thumbnail.format,
-      isEdited: false,
+      isEdited,
       isProgressive: false,
       isTransparent: false,
     });
@@ -515,6 +522,12 @@ export class MediaService extends BaseService {
     const thumbConfig = ThumbnailConfig.create({ ...ffmpeg, targetResolution: image.thumbnail.size.toString() });
     const previewOptions = previewConfig.getCommand(TranscodeTarget.Video, videoStream, undefined, format ?? undefined);
     const thumbnailOptions = thumbConfig.getCommand(TranscodeTarget.Video, videoStream, undefined, format ?? undefined);
+
+    if (seekSeconds > 0) {
+      const seek = seekSeconds.toFixed(3);
+      previewOptions.inputOptions.unshift('-ss', seek);
+      thumbnailOptions.inputOptions.unshift('-ss', seek);
+    }
 
     await this.mediaRepository.transcode(asset.originalPath, previewFile.path, previewOptions);
     await this.mediaRepository.transcode(asset.originalPath, thumbnailFile.path, thumbnailOptions);
@@ -542,6 +555,118 @@ export class MediaService extends BaseService {
     }
 
     return JobStatus.Success;
+  }
+
+  @OnJob({ name: JobName.AssetTrimVideo, queue: QueueName.VideoConversion })
+  async handleVideoTrim({ id, startTime, endTime, accurate }: JobOf<JobName.AssetTrimVideo>): Promise<JobStatus> {
+    const asset = await this.assetRepository.getById(id, { files: true, exifInfo: true });
+    if (!asset) {
+      return JobStatus.Failed;
+    }
+
+    if (asset.type !== AssetType.Video) {
+      this.logger.warn(`Skipped trimming asset ${asset.id}: not a video`);
+      return JobStatus.Skipped;
+    }
+
+    if (!asset.originalPath) {
+      return JobStatus.Failed;
+    }
+
+    const videoInfo = await this.mediaRepository.probe(asset.originalPath);
+    const duration = videoInfo.format.duration;
+    if (!duration || duration <= 0) {
+      this.logger.warn(`Skipped trimming asset ${asset.id}: unable to determine duration`);
+      return JobStatus.Failed;
+    }
+
+    const start = Math.max(0, startTime);
+    const end = Math.min(duration, endTime);
+    const clipDuration = end - start;
+    if (clipDuration < 0.5) {
+      this.logger.warn(`Skipped trimming asset ${asset.id}: resulting clip would be too short`);
+      return JobStatus.Failed;
+    }
+
+    const parsed = parse(asset.originalPath);
+    const extension = parsed.ext || '.mp4';
+    const fileId = this.cryptoRepository.randomUUID();
+    const outputPath = StorageCore.getNestedPath(StorageFolder.Upload, asset.ownerId, `${fileId}${extension}`);
+    this.storageCore.ensureFolders(outputPath);
+
+    this.logger.log(
+      `Exporting trimmed copy of video ${asset.id} to ${start.toFixed(3)}s–${end.toFixed(3)}s (${accurate ? 're-encode' : 'stream copy'})`,
+    );
+
+    try {
+      await this.mediaRepository.transcode(
+        asset.originalPath,
+        outputPath,
+        this.getTrimCommand(start, clipDuration, accurate, extension),
+      );
+    } catch (error: any) {
+      if (accurate) {
+        this.logger.error(`Failed to export trimmed video ${asset.id}: ${error.message}`);
+        await this.storageRepository.unlink(outputPath);
+        return JobStatus.Failed;
+      }
+
+      this.logger.warn(`Stream copy trim failed for ${asset.id}, retrying with re-encode: ${error.message}`);
+      try {
+        await this.mediaRepository.transcode(
+          asset.originalPath,
+          outputPath,
+          this.getTrimCommand(start, clipDuration, true, extension),
+        );
+      } catch (retryError: any) {
+        this.logger.error(`Failed to export trimmed video ${asset.id}: ${retryError.message}`);
+        await this.storageRepository.unlink(outputPath);
+        return JobStatus.Failed;
+      }
+    }
+
+    try {
+      const [checksum, stats, newInfo] = await Promise.all([
+        this.cryptoRepository.hashFile(outputPath),
+        this.storageRepository.stat(outputPath),
+        this.mediaRepository.probe(outputPath),
+      ]);
+
+      const newAsset = await this.assetRepository.create({
+        ownerId: asset.ownerId,
+        libraryId: null,
+        checksum,
+        checksumAlgorithm: ChecksumAlgorithm.sha1File,
+        originalPath: outputPath,
+        fileCreatedAt: asset.fileCreatedAt,
+        fileModifiedAt: stats.mtime,
+        localDateTime: asset.localDateTime,
+        type: AssetType.Video,
+        isFavorite: asset.isFavorite,
+        duration: Math.round((newInfo.format.duration || clipDuration) * 1000),
+        visibility: asset.visibility,
+        originalFileName: asset.originalFileName,
+      });
+
+      await this.assetRepository.upsertExif({
+        exif: { assetId: newAsset.id, fileSizeInByte: stats.size },
+        lockedPropertiesBehavior: 'override',
+      });
+      await this.albumRepository.copyAlbums({ sourceAssetId: asset.id, targetAssetId: newAsset.id });
+      await this.userRepository.updateUsage(asset.ownerId, stats.size);
+      await this.eventRepository.emit('AssetCreate', { asset: newAsset });
+      await this.jobRepository.queue({
+        name: JobName.AssetExtractMetadata,
+        data: { id: newAsset.id, source: 'upload' },
+      });
+
+      this.logger.log(`Successfully exported trimmed video ${asset.id} as ${newAsset.id}`);
+      return JobStatus.Success;
+    } catch (error: any) {
+      this.logger.error(`Failed to create asset for trimmed video ${asset.id}: ${error.message}`);
+      await this.storageRepository.unlink(outputPath);
+      return JobStatus.Failed;
+    }
   }
 
   @OnJob({ name: JobName.AssetEncodeVideo, queue: QueueName.VideoConversion })
@@ -629,6 +754,37 @@ export class MediaService extends BaseService {
     });
 
     return JobStatus.Success;
+  }
+
+  private getTrimCommand(
+    startSeconds: number,
+    durationSeconds: number,
+    accurate: boolean | undefined,
+    extension: string,
+  ): TranscodeCommand {
+    const outputOptions: string[] = [];
+    if (startSeconds > 0) {
+      outputOptions.push('-ss', startSeconds.toFixed(3));
+    }
+    outputOptions.push('-t', durationSeconds.toFixed(3));
+
+    if (accurate) {
+      outputOptions.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-c:a', 'aac');
+    } else {
+      outputOptions.push('-c', 'copy', '-map', '0', '-avoid_negative_ts', 'make_zero');
+    }
+
+    const ext = extension.toLowerCase();
+    if (['.mp4', '.mov', '.m4v'].includes(ext)) {
+      outputOptions.push('-movflags', '+faststart');
+    }
+
+    return {
+      inputOptions: [],
+      outputOptions,
+      twoPass: false,
+      progress: { frameCount: 0, percentInterval: 10 },
+    };
   }
 
   private getTranscodeTarget(
@@ -817,7 +973,20 @@ export class MediaService extends BaseService {
   }
 
   private async generateEditedThumbnails(asset: ThumbnailAsset, config: SystemConfig) {
-    if (asset.type !== AssetType.Image || (asset.files.length === 0 && asset.edits.length === 0)) {
+    if (asset.files.length === 0 && asset.edits.length === 0) {
+      return;
+    }
+
+    if (asset.type === AssetType.Video) {
+      const trim = getTrimParameters(asset.edits);
+      if (!trim) {
+        return;
+      }
+
+      return this.generateVideoThumbnails(asset, config, { isEdited: true, seekSeconds: trim.startTime });
+    }
+
+    if (asset.type !== AssetType.Image) {
       return;
     }
 

@@ -854,6 +854,7 @@ export enum JobName {
   AssetEditThumbnailGeneration = 'AssetEditThumbnailGeneration',
   AssetEncodeVideoQueueAll = 'AssetEncodeVideoQueueAll',
   AssetEncodeVideo = 'AssetEncodeVideo',
+  AssetTrimVideo = 'AssetTrimVideo',
   AssetEmptyTrash = 'AssetEmptyTrash',
   AssetExtractMetadataQueueAll = 'AssetExtractMetadataQueueAll',
   AssetExtractMetadata = 'AssetExtractMetadata',

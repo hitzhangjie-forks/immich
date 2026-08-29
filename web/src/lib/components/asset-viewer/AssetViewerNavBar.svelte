@@ -129,6 +129,7 @@
     {/if}
 
     <ActionButton action={Actions.Edit} />
+    <ActionButton action={Actions.Trim} />
 
     {#if isOwner}
       <DeleteAction {asset} {onAction} {preAction} {onUndoDelete} />

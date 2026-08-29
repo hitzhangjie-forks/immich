@@ -396,4 +396,46 @@ describe(AssetController.name, () => {
       expect(body).toEqual(factory.responses.validationError([{ path: ['id'], message: 'Invalid UUID' }]));
     });
   });
+
+  describe('POST /assets/:id/trim', () => {
+    it('should require a valid id', async () => {
+      const { status, body } = await request(ctx.getHttpServer()).post(`/assets/123/trim`).send({
+        startTime: 1,
+        endTime: 10,
+      });
+
+      expect(status).toBe(400);
+      expect(body).toEqual(factory.responses.validationError([{ path: ['id'], message: 'Invalid UUID' }]));
+    });
+
+    it('should require endTime to be greater than startTime', async () => {
+      const { status, body } = await request(ctx.getHttpServer()).post(`/assets/${factory.uuid()}/trim`).send({
+        startTime: 10,
+        endTime: 1,
+      });
+
+      expect(status).toBe(400);
+      expect(body).toEqual(
+        factory.responses.validationError([{ path: ['endTime'], message: 'endTime must be greater than startTime' }]),
+      );
+    });
+
+    it('should accept a valid trim request', async () => {
+      const assetId = factory.uuid();
+      const { status } = await request(ctx.getHttpServer()).post(`/assets/${assetId}/trim`).send({
+        startTime: 3,
+        endTime: 50,
+        accurate: false,
+        saveAsNew: true,
+      });
+
+      expect(service.trimAsset).toHaveBeenCalledWith(undefined, assetId, {
+        startTime: 3,
+        endTime: 50,
+        accurate: false,
+        saveAsNew: true,
+      });
+      expect(status).toBe(204);
+    });
+  });
 });
