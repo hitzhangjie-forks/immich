@@ -253,8 +253,9 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & 
   };
 
   const Trim: ActionItem = {
-    title: $t('trim_video'),
+    title: asset.isEdited ? $t('trim_video_soft_edited') : $t('trim_video'),
     icon: mdiContentCut,
+    color: asset.isEdited ? 'primary' : undefined,
     $if: () =>
       !sharedLink &&
       isOwner &&

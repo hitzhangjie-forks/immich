@@ -2214,6 +2214,8 @@
   "trim_video_saved": "Trim saved. Playback and cover use the kept range; the original file is unchanged.",
   "trim_video_set_end": "Set end to current time",
   "trim_video_set_start": "Set start to current time",
+  "trim_video_soft_edited": "Trimmed (original kept)",
+  "trim_video_soft_edited_hint": "Playback uses the trimmed range. The original file is unchanged and still uses storage.",
   "troubleshoot": "Troubleshoot",
   "type": "Type",
   "unable_to_change_pin_code": "Unable to change PIN code",

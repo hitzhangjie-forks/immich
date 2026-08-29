@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { AssetTypeEnum } from '@immich/sdk';
 import { getResizeObserverMock } from '$lib/__mocks__/resize-observer.mock';
 import { authManager } from '$lib/managers/auth-manager.svelte';
 import { renderWithTooltips } from '$tests/helpers';
@@ -65,6 +66,42 @@ describe('AssetViewerNavBar component', () => {
 
       const { getByLabelText } = renderWithTooltips(AssetViewerNavBar, { asset, ...additionalProps });
       expect(getByLabelText('delete')).toBeInTheDocument();
+    });
+
+    it('shows a distinct trim control when the video is soft-edited', () => {
+      const ownerId = 'id-of-the-user';
+      const user = userAdminFactory.build({ id: ownerId });
+      authManager.setUser(user);
+
+      const preferences = preferencesFactory.build({ cast: { gCastEnabled: false } });
+      authManager.setPreferences(preferences);
+
+      const unedited = renderWithTooltips(AssetViewerNavBar, {
+        asset: assetFactory.build({
+          ownerId,
+          type: AssetTypeEnum.Video,
+          isTrashed: false,
+          libraryId: null,
+          isEdited: false,
+        }),
+        ...additionalProps,
+      });
+      expect(unedited.getByLabelText('trim_video')).toBeInTheDocument();
+      expect(unedited.queryByLabelText('trim_video_soft_edited')).not.toBeInTheDocument();
+      unedited.unmount();
+
+      const edited = renderWithTooltips(AssetViewerNavBar, {
+        asset: assetFactory.build({
+          ownerId,
+          type: AssetTypeEnum.Video,
+          isTrashed: false,
+          libraryId: null,
+          isEdited: true,
+        }),
+        ...additionalProps,
+      });
+      expect(edited.getByLabelText('trim_video_soft_edited')).toBeInTheDocument();
+      expect(edited.queryByLabelText('trim_video')).not.toBeInTheDocument();
     });
   });
 });

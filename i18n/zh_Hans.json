@@ -2161,6 +2161,8 @@
   "trim_video_saved": "已保存裁剪。播放和封面会使用保留片段，原始文件未改动。",
   "trim_video_set_end": "将当前位置设为结束",
   "trim_video_set_start": "将当前位置设为开始",
+  "trim_video_soft_edited": "已裁剪（原文件保留）",
+  "trim_video_soft_edited_hint": "当前播放的是裁剪后的片段。原始文件没有改动，仍会占用存储。",
   "troubleshoot": "故障排除",
   "type": "类型",
   "unable_to_change_pin_code": "无法修改PIN码",

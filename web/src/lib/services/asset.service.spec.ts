@@ -1,4 +1,4 @@
-import { getAssetInfo } from '@immich/sdk';
+import { AssetTypeEnum, getAssetInfo } from '@immich/sdk';
 import { toastManager } from '@immich/ui';
 import { vitest } from 'vitest';
 import { authManager } from '$lib/managers/auth-manager.svelte';
@@ -68,6 +68,20 @@ describe('AssetService', () => {
       setSharedLink(sharedLinkFactory.build({ allowDownload: true }));
       const assetActions = getAssetActions(() => '', asset);
       expect(assetActions.SharedLinkDownload.$if?.()).toStrictEqual(true);
+    });
+
+    it('highlights the trim action when the video has a soft trim', () => {
+      const ownerId = 'owner';
+      const user = userAdminFactory.build({ id: ownerId });
+      authManager.setUser(user);
+      const $t = (key: string) => key;
+      const unedited = getAssetActions($t, assetFactory.build({ ownerId, type: AssetTypeEnum.Video, isEdited: false }));
+      const edited = getAssetActions($t, assetFactory.build({ ownerId, type: AssetTypeEnum.Video, isEdited: true }));
+      expect(unedited.Trim.title).toBe('trim_video');
+      expect(unedited.Trim.color).toBeUndefined();
+      expect(edited.Trim.title).toBe('trim_video_soft_edited');
+      expect(edited.Trim.color).toBe('primary');
+      expect(edited.Trim.icon).toBe(unedited.Trim.icon);
     });
   });
 

@@ -9,13 +9,14 @@
   import { mediaCapabilitiesManager } from '$lib/managers/media-capabilities-manager.svelte';
   import { autoPlayVideo, lang, loopVideo as loopVideoPreference } from '$lib/stores/preferences.store';
   import { getAssetHlsSessionUrl, getAssetHlsUrl, getAssetMediaUrl, getAssetPlaybackUrl } from '$lib/utils';
-  import { getTrimRange, type VideoTrimRange } from '$lib/utils/video-trim';
+  import { getClipDuration, getTrimRange, type VideoTrimRange } from '$lib/utils/video-trim';
   import { AssetMediaSize, AssetTypeEnum, getAssetEdits, type AssetResponseDto } from '@immich/sdk';
-  import { Icon, LoadingSpinner, shortcuts } from '@immich/ui';
+  import { Icon, LoadingSpinner, shortcuts, Tooltip } from '@immich/ui';
   import {
     mdiCheck,
     mdiChevronLeft,
     mdiChevronRight,
+    mdiContentCut,
     mdiFullscreen,
     mdiFullscreenExit,
     mdiPause,
@@ -34,7 +35,6 @@
   import 'media-chrome/media-mute-button';
   import 'media-chrome/media-play-button';
   import 'media-chrome/media-playback-rate-button';
-  import 'media-chrome/media-time-display';
   import 'media-chrome/media-volume-range';
   import 'media-chrome/menu/media-playback-rate-menu';
   import 'media-chrome/menu/media-rendition-menu';
@@ -45,6 +45,7 @@
   import { useSwipe, type SwipeCustomEvent } from 'svelte-gestures';
   import { t } from 'svelte-i18n';
   import { fade } from 'svelte/transition';
+  import './immich-time-display';
   import './immich-time-range';
 
   interface Props {
@@ -77,7 +78,10 @@
 
   let videoPlayer: HTMLVideoElement | undefined = $state();
   let isLoading = $state(true);
-  let trimRange: VideoTrimRange | null = $state(null);
+  let trimRange = $state<VideoTrimRange | null>(null);
+  const playbackDuration = $derived(
+    trimRange ? getClipDuration(trimRange) : asset.duration ? asset.duration / 1000 : undefined,
+  );
   const nativeLoop = $derived($loopVideoPreference && loopVideo && !trimRange);
   let assetFileUrl = $derived.by(() => {
     if (featureFlagsManager.value.realtimeTranscoding) {
@@ -212,7 +216,7 @@
         }
       }
 
-      api.startLoad(resumeTime);
+      api.startLoad(resumeTime ?? trimRange?.startTime);
     });
 
     api.on(Hls.Events.FRAG_LOADED, () => (rebuildCount = 0));
@@ -358,6 +362,16 @@
     };
   });
 
+  $effect(() => {
+    const video = videoPlayer;
+    const range = trimRange;
+    if (!video || !range || video.currentTime + 0.05 >= range.startTime) {
+      return;
+    }
+
+    video.currentTime = range.startTime;
+  });
+
   const clampToTrim = (time: number) => {
     if (!trimRange) {
       return time;
@@ -368,7 +382,7 @@
 
   const onTimeUpdate = (event: Event) => {
     const video = event.currentTarget as HTMLVideoElement;
-    if (!trimRange || playOriginalVideo) {
+    if (!trimRange) {
       return;
     }
 
@@ -434,7 +448,7 @@
         nohotkeys
         class="dark h-full max-w-full"
         style:aspect-ratio={aspectRatio}
-        defaultduration={asset.duration! / 1000}
+        defaultduration={playbackDuration}
       >
         {#if featureFlagsManager.value.realtimeTranscoding}
           <hls-video
@@ -519,7 +533,26 @@
               <Icon slot="play" icon={mdiPlay} />
               <Icon slot="pause" icon={mdiPause} />
             </media-play-button>
-            <media-time-display showduration class="rounded-lg p-2 outline-none"></media-time-display>
+            <immich-time-display
+              showduration
+              class="rounded-lg p-2 outline-none"
+              clipstart={trimRange?.startTime}
+              clipend={trimRange?.endTime}
+            ></immich-time-display>
+            {#if trimRange}
+              <Tooltip text={$t('trim_video_soft_edited_hint')}>
+                {#snippet child({ props })}
+                  <span
+                    {...props}
+                    class="flex shrink-0 items-center rounded-full p-2 text-amber-400"
+                    role="img"
+                    aria-label={$t('trim_video_soft_edited')}
+                  >
+                    <Icon icon={mdiContentCut} />
+                  </span>
+                {/snippet}
+              </Tooltip>
+            {/if}
 
             <span class="grow"></span>
 
@@ -543,7 +576,11 @@
               <media-settings-menu-button class="shrink-0 rounded-full p-2 outline-none"></media-settings-menu-button>
             {/if}
           </media-control-bar>
-          <immich-time-range class="h-8 w-full rounded-lg px-2 pb-3 outline-none"></immich-time-range>
+          <immich-time-range
+            class="h-8 w-full rounded-lg px-2 pb-3 outline-none"
+            clipstart={trimRange?.startTime}
+            clipend={trimRange?.endTime}
+          ></immich-time-range>
         </div>
       </media-controller>
 
@@ -592,7 +629,7 @@
     --media-tooltip-padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3.5);
   }
 
-  media-time-display {
+  immich-time-display {
     font-variant-numeric: tabular-nums;
   }
 
